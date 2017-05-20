@@ -1,0 +1,184 @@
+---
+title: "Flowtap Data Science Application"
+author: "Willber Barrios"
+date: "May 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is the script and results of Test Project for the job application at Flowtap Data Science. Please set the files in the set working directory.
+
+##1. Engineering a Data Set
+
+###Instructions
+Create a list of numbers with the following properties: 
+* Minimum 100 distinct values
+* The Mean of all values is 1000 (+/- 0.5)
+* The standard Deviation is 10 (+/- 0.1)
+
+###Solution
+
+Create a sample of 100 individual from a normal distribution with mean 1000 and sd 10
+
+```{r}
+dataset1 <- rnorm(n=100, m=1000, sd=10)
+```
+
+##2. Writing a Simulation
+
+###Instructions
+Implement in R or Python a solution to the following problem: Imagine there is a country in which couples only want boys. Couples continue to have children until they have their first boy. If they get a boy, they stop getting children. What is the long-term ratio of boys to girls in the country?
+
+###Solution
+We assume this population has a initial number n (let's say 10000) of inhabitants, with n/2 couples (ratio 50/50) and it is static, in other words we won't take into account the deaths (since according to nature this behaves 50/50). We also need to assume the children of these n/2 will not be taken into account for reproduction. The initial hypothesis for this problem is that nature will win and after all there will be a ratio of 50/50 for boys and girls.
+
+```{r}
+n <- 10000
+couples_rep <- n/2
+boys <- 0
+girls <- 0
+```
+
+Being each iteration of the while cycle a period of reproduction
+
+```{r warning=FALSE}
+while(couples_rep>0){
+     new_born <- sample(c(TRUE,FALSE), replace=TRUE,size=couples_rep)
+     new_boys <- length(new_born[new_born==TRUE])
+     new_girls <- length(new_born[new_born==FALSE])
+     couples_rep <- couples_rep - new_boys ##Remaining couples that will try to get a boy in the next period of reproduction
+     boys <- boys + new_boys
+     girls <- girls + new_girls
+}
+```
+
+After all couples get a boy, these are the totals for new children
+```{r}
+print(boys)
+print(girls)
+```
+
+The numbers are almost the same, indicating our initial hypothesis can be true. We can test if these numbers are statistically the same, with a normal distribution test, setting a new hypothesis:
+
+Ho: the probability that a child in this population is a boy is 0.5
+
+H1: the probability that a child in this population is a boy is not 0.5
+
+Meaning;
+
+Ho: p = 0.5
+
+H1: p /= 0.5
+
+We would use a 5% of significance and a t test because we don't know the standard deviation of the pupulation.
+
+p calculated:
+
+```{r}
+total_born <- boys + girls
+p = boys / total_born
+```
+
+t calculated:
+
+```{r}
+t <- (p-0.5) / sqrt(0.5*(1-0.5)/total_born)
+```
+
+```{r}
+print(t)
+```
+
+t critical:
+```{r}
+tc1 <- qt(0.025,total_born-1)
+tc2 <- qt(0.975,total_born-1)
+```
+
+```{r}
+print(tc1)
+```
+
+```{r}
+print(tc2)
+```
+
+For this t test, the null hypothesis is accepted because t calculated is in between of t critical limits, this means that the distribution of boys and girls is stadistically 50/50.
+
+In conclusion the ratio of 50/50 is maintained after all, even if the couples have preferances for boys the population keeps the natural half and half ratio.
+
+##3. Analyzing a Data Set
+
+###Instructions
+
+Using the data set http://archive.ics.uci.edu/ml/datasets/Adult:
+
+Explore the data and visualize and explain two interesting findings of your choice. Use R and ggplot2 for this task.
+Build a linear model to predict wether a person makes over 50K a year
+Bonus 1: Use any another model type o predict wether a person makes over 50K a year
+Bonus 2: Implement an application in Shiny to show the distribution of age by marital-status, meaning the user can pick one marital-status from a list and get the distribution of age for that characteristic.
+
+###Solution
+
+####Relation between variables
+We load and give format to the data and convert the category (response variable) to numeric for correct utilization in statistical models. Capital gain and capital loss are not considered input variables rather they are response variables to the income.
+```{r warning=FALSE}
+library(ggplot2)
+data_census <- read.table("adult.data", sep=",",header=F,col.names=c("age", "workclass", "fnlwgt", "education", "educationnum","maritalstatus", "occupation", "relationship", "race","sex","capitalgain", "capitalloss", "hoursperweek","nativecountry", "income"))
+
+data_census$income = as.character(data_census$income)
+data_census[data_census$income==' <=50K',15] <- 0
+data_census[data_census$income==' >50K',15] <- 1
+
+data_census[data_census$income!=0&&data_census$income!=1,] #Check if all the rows had values for income
+```
+
+Checking the individual behavior of the input values to the response value income. The fnlwgt is used as number of people one particular record represents. It is divided by 100000 (fnlwgt/100000) to avoid any integer overflow and still get the representative behaviour.
+```{r warning=FALSE}
+ggplot(data_census, aes(x= age, fill=income, weight=fnlwgt/100000)) + geom_histogram(binwidth = 1, alpha = .5, position = "identity" ) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(x= age, fill=income, weight=fnlwgt/100000)) + geom_histogram(binwidth = 1, alpha = .5, position = "identity" ) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(x= hoursperweek, fill=income, weight=fnlwgt/100000)) + geom_histogram(binwidth = 1, alpha = .5, position = "identity" ) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))+labs(x = "hours per week")
+
+ggplot(data_census, aes(workclass, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(education, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(maritalstatus, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))+labs(x = "marital status")
+
+ggplot(data_census, aes(occupation, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(relationship, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(race, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))
+
+ggplot(data_census, aes(sex, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge")+labs(x = "gender")
+
+ggplot(data_census, aes(nativecountry, ..count.., weight=fnlwgt/100000)) + geom_bar(aes(fill = income), position = "dodge") + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + scale_fill_discrete(breaks=c(0, 1),labels=c("Less than 50k", "More than 50k"))+labs(x = "native country")
+
+ggplot(data_census, aes(weight=fnlwgt/100000)) + geom_count(mapping = aes(y= capitalgain, x=income ))+ scale_x_discrete(breaks=c(0, 1),labels=c("less than 50k","more than 50k")) +labs(y = "capital gain")
+
+ggplot(data_census, aes(weight=fnlwgt/100000)) + geom_count(mapping = aes(y= capitalloss, x=income ))+ scale_x_discrete(breaks=c(0, 1),labels=c("less than 50k","more than 50k")) +labs(y = "capital loss")
+
+
+```
+
+####Multiple linear model to predict whether a person makes over 50k a year
+```{r warning=FALSE}
+model<-lm(formula=income~age+ workclass+education+maritalstatus+occupation+relationship+race+sex+capitalgain+capitalloss+hoursperweek+nativecountry,data_census)
+summary(model)
+```
+
+####Logistic model with binary output to predict whether a person makes over 50k a year
+```{r warning=FALSE}
+data_census$income = factor(data_census$income)
+model2<-glm(formula=income~age+ workclass+education+maritalstatus+occupation+relationship+race+sex+capitalgain+capitalloss+hoursperweek+nativecountry,data=data_census, family="binomial")
+summary(model2)
+```
+
+####Running Shiny application
+The shiny application can be found in the /shiny folder
